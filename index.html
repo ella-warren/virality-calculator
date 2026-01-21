@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve Mould Virality Tool v6.1</title>
+    <title>Steve Mould Virality Tool v6.2</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; color: #1c1e21; margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 40px; }
@@ -79,7 +79,7 @@
 <body>
 
 <div class="header">
-    <h1>Virality A/B Tester v6.1</h1>
+    <h1>Virality A/B Tester v6.2</h1>
     <p>Weighted Analysis: <strong>Emotive (22% lift)</strong> > <strong>Color (36% lift)</strong> > <strong>Faces (4% lift)</strong></p>
 </div>
 
@@ -101,9 +101,9 @@
                 <div class="thumb-text-group">
                     <div class="checkbox-row">
                         <input type="checkbox" id="hasText_${i}" onchange="toggleTextInput(${i})">
-                        <label for="hasText_${i}">Thumbnail HAS text</label>
+                        <label for="hasText_${i}">Check if thumbnail has text</label>
                     </div>
-                    <input type="text" id="thumbText_${i}" placeholder="Disabled (Check box to type)" disabled>
+                    <input type="text" id="thumbText_${i}" placeholder="Disabled (No text assumed)" disabled>
                 </div>
 
                 <div class="checkbox-row" style="margin-top:15px;">
@@ -176,7 +176,7 @@
         } else {
             input.value = "";
             input.disabled = true;
-            input.placeholder = "Disabled (Check box to type)";
+            input.placeholder = "Disabled (No text assumed)";
         }
     }
 
