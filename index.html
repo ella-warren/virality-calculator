@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve Mould Virality Tool v6.0 (Weighted)</title>
+    <title>Steve Mould Virality Tool v6.1</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; color: #1c1e21; margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 40px; }
@@ -33,9 +33,13 @@
         
         input[type="text"], input[type="file"] { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         
+        /* Disabled input styling */
+        input[disabled] { background-color: #f0f0f0; color: #999; cursor: not-allowed; }
+
         .thumb-text-group { background: #f7f8fa; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #eee; }
         .checkbox-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
-        .checkbox-row input { margin-right: 8px; width: 16px; height: 16px; }
+        .checkbox-row input { margin-right: 8px; width: 16px; height: 16px; cursor: pointer; }
+        .checkbox-row label { margin: 0; font-weight: normal; cursor: pointer; }
         
         .preview-img { width: 100%; height: auto; border-radius: 8px; margin-top: 15px; display: none; border: 1px solid #eee; }
 
@@ -75,7 +79,7 @@
 <body>
 
 <div class="header">
-    <h1>Virality A/B Tester v6.0</h1>
+    <h1>Virality A/B Tester v6.1</h1>
     <p>Weighted Analysis: <strong>Emotive (22% lift)</strong> > <strong>Color (36% lift)</strong> > <strong>Faces (4% lift)</strong></p>
 </div>
 
@@ -96,14 +100,15 @@
                 <label>Thumbnail Text</label>
                 <div class="thumb-text-group">
                     <div class="checkbox-row">
-                        <input type="checkbox" id="noText_${i}" onchange="toggleTextInput(${i})">
-                        <span>Check if thumbnail has NO text</span>
+                        <input type="checkbox" id="hasText_${i}" onchange="toggleTextInput(${i})">
+                        <label for="hasText_${i}">Thumbnail HAS text</label>
                     </div>
-                    <input type="text" id="thumbText_${i}" placeholder="e.g. 15,000 KELVIN">
+                    <input type="text" id="thumbText_${i}" placeholder="Disabled (Check box to type)" disabled>
                 </div>
 
                 <div class="checkbox-row" style="margin-top:15px;">
-                    <input type="checkbox" id="face_${i}"> <span>Include Steve's Face?</span>
+                    <input type="checkbox" id="face_${i}"> 
+                    <label for="face_${i}">Include Steve's Face?</label>
                 </div>
 
                 <div class="result-section" id="res_${i}">
@@ -162,15 +167,16 @@
     }
 
     function toggleTextInput(id) {
-        const checkbox = document.getElementById(`noText_${id}`);
+        const checkbox = document.getElementById(`hasText_${id}`);
         const input = document.getElementById(`thumbText_${id}`);
         if(checkbox.checked) {
-            input.value = "";
-            input.disabled = true;
-            input.placeholder = "No text enabled";
-        } else {
             input.disabled = false;
             input.placeholder = "e.g. 15,000 KELVIN";
+            input.focus();
+        } else {
+            input.value = "";
+            input.disabled = true;
+            input.placeholder = "Disabled (Check box to type)";
         }
     }
 
@@ -183,7 +189,7 @@
         const title = document.getElementById(`title_${id}`).value;
         const fileInput = document.getElementById(`file_${id}`);
         const facePresent = document.getElementById(`face_${id}`).checked;
-        const noText = document.getElementById(`noText_${id}`).checked;
+        const hasText = document.getElementById(`hasText_${id}`).checked;
         const thumbText = document.getElementById(`thumbText_${id}`).value;
         
         const resultSection = document.getElementById(`res_${id}`);
@@ -242,7 +248,7 @@
         // 2. THUMBNAIL TEXT (Max 1.5 Points)
         // ============================================
         
-        if (noText) {
+        if (!hasText) {
             points += 1.5;
             metricsHtml += renderMetric("Thumb Text", 1.5, 1.5, "Visual-only strategy.");
         } else {
