@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve Mould Virality Tool v6.2</title>
+    <title>Steve Mould Virality Tool v7.0 (Strict Data)</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; color: #1c1e21; margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 40px; }
@@ -31,10 +31,10 @@
         h2 { font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 0; }
         label { display: block; font-weight: 700; margin-top: 15px; font-size: 0.85rem; color: #444; }
         
-        input[type="text"], input[type="file"] { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        input[type="text"], input[type="file"], select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         
         /* Disabled input styling */
-        input[disabled] { background-color: #f0f0f0; color: #999; cursor: not-allowed; }
+        input[disabled], select[disabled] { background-color: #f0f0f0; color: #999; cursor: not-allowed; }
 
         .thumb-text-group { background: #f7f8fa; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #eee; }
         .checkbox-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
@@ -79,8 +79,8 @@
 <body>
 
 <div class="header">
-    <h1>Virality A/B Tester v6.2</h1>
-    <p>Weighted Analysis: <strong>Emotive (22% lift)</strong> > <strong>Color (36% lift)</strong> > <strong>Faces (4% lift)</strong></p>
+    <h1>Virality A/B Tester v7.0</h1>
+    <p><strong>Strict PDF Priorities:</strong> Brightness (100-110) • Colors (+36%) • Negativity (+22%)</p>
 </div>
 
 <div class="grid-container">
@@ -104,6 +104,13 @@
                         <label for="hasText_${i}">Check if thumbnail has text</label>
                     </div>
                     <input type="text" id="thumbText_${i}" placeholder="Disabled (No text assumed)" disabled>
+                    
+                    <label style="margin-top:10px; font-size:0.8rem;">Text Size Estimate (Manual)</label>
+                    <select id="textSize_${i}" disabled>
+                        <option value="small">Small / Unobtrusive (Recommended)</option>
+                        <option value="medium">Medium / Noticeable</option>
+                        <option value="large">Large / Obstructive (>30% of image)</option>
+                    </select>
                 </div>
 
                 <div class="checkbox-row" style="margin-top:15px;">
@@ -118,7 +125,7 @@
                     </div>
                     <div class="metrics-list" id="metrics_${i}"></div>
                     <div class="suggestions-box">
-                        <h4>⚠️ Optimization Tips:</h4>
+                        <h4>⚠️ Priority Fixes:</h4>
                         <ul id="sugg_${i}"></ul>
                     </div>
                 </div>
@@ -133,16 +140,21 @@
 </div>
 
 <script>
-    // --- SCIENCE / MOULD AUDIENCE CONFIGURATION ---
-    const SCIENCE_EMOTIVE = ['weird', 'impossible', 'counter-intuitive', 'mystery', 'hidden', 'secret', 'actually', 'finally', 'broken', 'wrong', 'danger', 'dead', 'warning', 'anomaly', 'paradox', 'stop', 'glass'];
-    const SCIENCE_TOPICS = ['physics', 'liquid', 'water', 'vacuum', 'sound', 'light', 'laser', 'effect', 'experiment', 'beads', 'chain', 'mold', 'siphon', 'plasma', 'magnet', 'lens'];
-    const STOP_WORDS = ['the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'of', 'in', 'on', 'to', 'for', 'with', 'at', 'by', 'it', 'that', 'this'];
+    // --- CONFIGURATION ---
+    // PDF Report: "Negative titles perform 22% better"
+    const NEGATIVE_WORDS = ['broken', 'wrong', 'danger', 'impossible', 'dead', 'bad', 'stop', 'warning', 'secret', 'hidden', 'trap', 'fail', 'fake', 'lie', 'worst', 'mistake'];
+    
+    // PDF Report: "Curiosity Gaps drive clicks"
+    const CURIOSITY_WORDS = ['why', 'what', 'how', '?', 'this'];
+
+    // Steve Mould / Science Context (Medium Priority)
+    const SCIENCE_TOPICS = ['physics', 'liquid', 'water', 'vacuum', 'sound', 'light', 'laser', 'experiment', 'magnet'];
 
     // --- HELPER: RENDER METRIC ---
     function renderMetric(name, score, max, context, isBad = false) {
         let colorClass = "score-mid";
-        if (score >= max * 0.9) colorClass = "score-perfect";
-        if (score === 0 || isBad) colorClass = "score-bad";
+        if (score >= max * 0.95) colorClass = "score-perfect";
+        if (score <= max * 0.3 || isBad) colorClass = "score-bad";
         
         return `
         <div class="metric-row">
@@ -169,13 +181,18 @@
     function toggleTextInput(id) {
         const checkbox = document.getElementById(`hasText_${id}`);
         const input = document.getElementById(`thumbText_${id}`);
+        const select = document.getElementById(`textSize_${id}`);
+        
         if(checkbox.checked) {
             input.disabled = false;
+            select.disabled = false;
             input.placeholder = "e.g. 15,000 KELVIN";
             input.focus();
         } else {
             input.value = "";
             input.disabled = true;
+            select.disabled = true;
+            select.value = "small";
             input.placeholder = "Disabled (No text assumed)";
         }
     }
@@ -191,98 +208,99 @@
         const facePresent = document.getElementById(`face_${id}`).checked;
         const hasText = document.getElementById(`hasText_${id}`).checked;
         const thumbText = document.getElementById(`thumbText_${id}`).value;
+        const textSize = document.getElementById(`textSize_${id}`).value;
         
         const resultSection = document.getElementById(`res_${id}`);
         if (!title && !fileInput.files.length) return; 
         resultSection.style.display = 'block';
         
-        let points = 0;
+        // SCORING WEIGHTS (Total = 100 normalized to 10)
+        // PDF Findings get HIGH weight.
+        
+        let rawScore = 0;
+        let maxPossible = 0;
         let suggestions = [];
         let metricsHtml = '';
 
         // ============================================
-        // 1. TITLE ANALYSIS (Max 4.0 Points)
+        // 1. TITLE ANALYSIS
         // ============================================
 
-        // A. Negativity/Emotive (WEIGHT: 2.0 pts) -> 50% of Title Score
+        // A. Negativity (PDF: +22% Lift) - Priority: HIGH
+        // Weight: 2.0 pts
         const lowerTitle = title.toLowerCase();
-        const hasTrigger = SCIENCE_EMOTIVE.some(w => lowerTitle.includes(w));
+        const hasNegative = NEGATIVE_WORDS.some(w => lowerTitle.includes(w));
+        maxPossible += 2.0;
         
-        if (hasTrigger) {
-            points += 2.0;
-            metricsHtml += renderMetric("Negativity/Hook", 2.0, 2.0, "High Impact (+22% Lift).");
+        if (hasNegative) {
+            rawScore += 2.0;
+            metricsHtml += renderMetric("Negativity Bias", 2.0, 2.0, "Contains strong negative trigger.");
         } else {
-            metricsHtml += renderMetric("Negativity/Hook", 0, 2.0, "Missing emotional trigger.", true);
-            suggestions.push("Title lacks a 'Negative' or 'Emotive' hook (e.g., Broken, Impossible). This is a missed 22% lift.");
+            metricsHtml += renderMetric("Negativity Bias", 0, 2.0, "No negative words found.", true);
+            suggestions.push("PDF FINDING: Negative titles get 22% more views. Add 'Broken', 'Wrong', or 'Danger'.");
         }
 
-        // B. Length (WEIGHT: 1.0 pts)
+        // B. Curiosity Gap (PDF: High engagement) - Priority: MEDIUM
+        // Weight: 1.0 pts
+        const hasQ = CURIOSITY_WORDS.some(w => lowerTitle.includes(w));
+        maxPossible += 1.0;
+        
+        if (hasQ) {
+            rawScore += 1.0;
+            metricsHtml += renderMetric("Curiosity Gap", 1.0, 1.0, "Includes Question/Gap words.");
+        } else {
+            metricsHtml += renderMetric("Curiosity Gap", 0, 1.0, "Direct statement.", true);
+            suggestions.push("Rephrase as a question ('Why', 'How') to open a curiosity gap.");
+        }
+
+        // C. Length (PDF: Short is better) - Priority: MEDIUM
+        // Weight: 1.0 pts
+        maxPossible += 1.0;
         if (title.length > 0 && title.length < 60) {
-            points += 1.0;
-            metricsHtml += renderMetric("Title Length", 1.0, 1.0, "Perfect (<60 chars)");
+            rawScore += 1.0;
+            metricsHtml += renderMetric("Length", 1.0, 1.0, "Optimal (<60 chars).");
         } else if (title.length <= 80) {
-            points += 0.5;
-            metricsHtml += renderMetric("Title Length", 0.5, 1.0, "Good, but cut 5-10 chars.");
-            suggestions.push("Shorten title to <60 chars to minimize cognitive load.");
+            rawScore += 0.5;
+            metricsHtml += renderMetric("Length", 0.5, 1.0, "Acceptable, but cut 5-10 chars.");
+            suggestions.push("Shorten title to <60 chars to reduce cognitive load.");
         } else {
-            metricsHtml += renderMetric("Title Length", 0, 1.0, "Too long.", true);
-            suggestions.push("Title is too long. Rewrite.");
-        }
-
-        // C. Curiosity/Topic (WEIGHT: 1.0 pts)
-        const hasTopic = SCIENCE_TOPICS.some(w => lowerTitle.includes(w));
-        const hasQ = title.includes("?") || lowerTitle.includes("why") || lowerTitle.includes("what");
-
-        if (hasTopic && hasQ) {
-            points += 1.0;
-            metricsHtml += renderMetric("Curiosity", 1.0, 1.0, "Strong topic + question.");
-        } else if (hasTopic || hasQ) {
-            points += 0.5;
-            metricsHtml += renderMetric("Curiosity", 0.5, 1.0, "Has topic OR question.");
-            suggestions.push("Combine a Science Topic (e.g., 'Vacuum') with a Curiosity Gap ('Why...').");
-        } else {
-            metricsHtml += renderMetric("Curiosity", 0, 1.0, "Weak science focus.", true);
+            metricsHtml += renderMetric("Length", 0, 1.0, "Too long.", true);
+            suggestions.push("Title is significantly too long (>80 chars).");
         }
 
         // ============================================
-        // 2. THUMBNAIL TEXT (Max 1.5 Points)
+        // 2. THUMBNAIL TEXT ANALYSIS
         // ============================================
         
+        // D. Text Presence & Size (PDF: Less is more) - Priority: HIGH
+        // Weight: 1.5 pts
+        maxPossible += 1.5;
+
         if (!hasText) {
-            points += 1.5;
-            metricsHtml += renderMetric("Thumb Text", 1.5, 1.5, "Visual-only strategy.");
+            rawScore += 1.5;
+            metricsHtml += renderMetric("Thumb Text", 1.5, 1.5, "Clean image (Recommended).");
         } else {
-            // Brevity (0.5)
-            const wordCount = thumbText.trim().split(/\s+/).length;
-            if (wordCount < 5) {
-                points += 0.5;
-                metricsHtml += renderMetric("Brevity", 0.5, 0.5, "Short (<5 words).");
+            // Check manual size input
+            if (textSize === "large") {
+                rawScore += 0;
+                metricsHtml += renderMetric("Text Density", 0, 1.5, "Obstructive (>30% coverage).", true);
+                suggestions.push("PDF FINDING: Text is taking up too much space. Reduce size or remove.");
             } else {
-                metricsHtml += renderMetric("Brevity", 0, 0.5, "Too wordy.", true);
-                suggestions.push("Reduce thumbnail text to <5 words.");
-            }
-
-            // Data/Context (1.0)
-            const hasData = /\d|[kmg]v|hz|mm|°|%|k\b/i.test(thumbText);
-            const tWords = lowerTitle.replace(/[^\w\s]/g, '').split(/\s+/).filter(w => !STOP_WORDS.includes(w));
-            const thumbWords = thumbText.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => !STOP_WORDS.includes(w));
-            const repetition = thumbWords.every(w => tWords.includes(w)) && thumbWords.length > 0;
-
-            if (repetition) {
-                // Penalty for repeating title
-                suggestions.push("Thumbnail text repeats the title. Add NEW info (e.g., '15,000K').");
-            } else if (hasData) {
-                points += 1.0;
-                metricsHtml += renderMetric("Context", 1.0, 1.0, "Excellent data specificity.");
-            } else {
-                points += 0.5;
-                metricsHtml += renderMetric("Context", 0.5, 1.0, "Adds context, but lacks data.");
-                suggestions.push("Include specific numbers/units in thumbnail for higher click-through.");
+                // Check word count
+                const wordCount = thumbText.trim().split(/\s+/).length;
+                if (wordCount <= 4) {
+                    rawScore += 1.5;
+                    metricsHtml += renderMetric("Text Density", 1.5, 1.5, "Concise (<5 words).");
+                } else {
+                    rawScore += 0.5;
+                    metricsHtml += renderMetric("Text Density", 0.5, 1.5, "Too many words.", true);
+                    suggestions.push("Limit thumbnail text to 4 words max.");
+                }
             }
         }
 
         // ============================================
-        // 3. VISUALS (Max 4.5 Points) - HEAVILY WEIGHTED
+        // 3. VISUAL ANALYSIS (Strict PDF Data)
         // ============================================
 
         if (fileInput.files && fileInput.files[0]) {
@@ -290,20 +308,28 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    const imgResults = processScienceImage(img, facePresent);
-                    let finalScore = points + imgResults.score;
+                    const imgResults = processStrictImage(img, facePresent);
+                    
+                    rawScore += imgResults.score;
+                    maxPossible += 4.5; // Image adds 4.5 potential points
+                    
+                    // Normalize to 10 scale
+                    const finalScore = (rawScore / maxPossible) * 10;
+                    
                     finalizeResult(id, finalScore, metricsHtml + imgResults.metrics, suggestions.concat(imgResults.suggestions));
                 }
                 img.src = e.target.result;
             }
             reader.readAsDataURL(fileInput.files[0]);
         } else {
-            suggestions.push("Upload a thumbnail.");
-            finalizeResult(id, points, metricsHtml, suggestions);
+            suggestions.push("Upload thumbnail to check Brightness & Color.");
+            // Normalize current score
+            const finalScore = (rawScore / maxPossible) * 10;
+            finalizeResult(id, finalScore, metricsHtml, suggestions);
         }
     }
 
-    function processScienceImage(img, facePresent) {
+    function processStrictImage(img, facePresent) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = 100; 
@@ -313,20 +339,21 @@
         const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         
         let totalBrightness = 0;
-        let pixels = [];
         let cyanPx = 0, greenPx = 0, yellowPx = 0;
+        let totalPx = data.length / 4;
         
         for (let i = 0; i < data.length; i += 4) {
             let r = data[i], g = data[i+1], b = data[i+2];
+            
+            // Luminance
             let lum = 0.299*r + 0.587*g + 0.114*b;
             totalBrightness += lum;
-            pixels.push(lum);
             
-            // HSV Logic
+            // Color Detection (HSV)
             let max = Math.max(r, g, b), min = Math.min(r, g, b);
             let s = (max===0)?0:(max-min)/max;
             
-            if(s>0.25 && max>60) {
+            if(s > 0.25 && max > 50) {
                 let h = 0;
                 let d = max-min;
                 switch(max){
@@ -337,57 +364,62 @@
                 h/=6;
                 let hue = h*360;
                 
-                if(hue>170 && hue<200) cyanPx++;
-                else if(hue>80 && hue<140) greenPx++;
-                else if(hue>45 && hue<65) yellowPx++;
+                // PDF High Performing Colors
+                if(hue > 160 && hue < 200) cyanPx++; // Cyan
+                else if(hue > 80 && hue < 160) greenPx++; // Green
+                else if(hue > 40 && hue < 70) yellowPx++; // Yellow
             }
         }
         
-        const avgBrightness = totalBrightness / pixels.length;
-        const totalPx = pixels.length;
-        
-        // Contrast
-        let sumDiffSq = 0;
-        for(let p of pixels) sumDiffSq += Math.pow(p - avgBrightness, 2);
-        const stdDev = Math.sqrt(sumDiffSq / pixels.length);
+        const avgBrightness = totalBrightness / totalPx;
         
         let iScore = 0;
         let mLog = '';
         let mSugg = [];
 
-        // A. Color (WEIGHT: 2.0 pts) - Highest Visual Factor (36% Lift)
-        if ((cyanPx + greenPx + yellowPx) / totalPx > 0.05) {
+        // E. BRIGHTNESS (PDF: Peak 100-110) - Priority: HIGH
+        // Weight: 2.0 pts
+        // Logic: Distance from 105.
+        const target = 105;
+        const dist = Math.abs(avgBrightness - target);
+        
+        if (dist <= 10) { 
+            // 95 - 115
             iScore += 2.0;
-            mLog += renderMetric("Viral Color", 2.0, 2.0, "Viral Palette (Cyan/Green).");
-        } else {
-            mLog += renderMetric("Viral Color", 0, 2.0, "Lacks Cyan/Green (+36% Lift).", true);
-            mSugg.push("MAJOR: Add Cyan or Neon Green elements. This is the highest-leverage visual change.");
-        }
-
-        // B. Contrast/Brightness (WEIGHT: 2.0 pts)
-        if (stdDev > 40) {
-            iScore += 2.0;
-            mLog += renderMetric("Contrast", 2.0, 2.0, "High Contrast (Excellent).");
-        } else if (avgBrightness >= 100 && avgBrightness <= 120) {
-            iScore += 2.0;
-            mLog += renderMetric("Brightness", 2.0, 2.0, "Perfect Exposure.");
-        } else if (avgBrightness > 130) {
+            mLog += renderMetric("Brightness", 2.0, 2.0, `Perfect (${Math.round(avgBrightness)}). Hits 100-110 peak.`);
+        } else if (dist <= 25) {
+            // 80 - 130
             iScore += 1.0;
-            mLog += renderMetric("Brightness", 1.0, 2.0, "Overexposed.");
-            mSugg.push("Darken image slightly to improve contrast.");
+            mLog += renderMetric("Brightness", 1.0, 2.0, `Okay (${Math.round(avgBrightness)}), but missed peak.`);
+            if(avgBrightness > 115) mSugg.push(`Image is slightly overexposed (${Math.round(avgBrightness)}). Darken to ~105.`);
+            else mSugg.push(`Image is slightly dark (${Math.round(avgBrightness)}). Brighten to ~105.`);
         } else {
-            iScore += 0.5;
-            mLog += renderMetric("Visual Pop", 0.5, 2.0, "Flat/Dark.");
-            mSugg.push("Increase contrast or add a bright light source (spark/laser).");
+            // > 130 (Overexposed) or < 80 (Underexposed)
+            mLog += renderMetric("Brightness", 0, 2.0, `Poor Exposure (${Math.round(avgBrightness)}).`, true);
+            if(avgBrightness > 130) mSugg.push("PDF WARNING: Image is Overexposed. Reduce brightness.");
+            else mSugg.push("PDF WARNING: Image is Underexposed. Increase brightness significantly.");
         }
 
-        // C. Face (WEIGHT: 0.5 pts) - Low Impact (4% Lift)
+        // F. COLOR PALETTE (PDF: +36% Lift) - Priority: HIGH
+        // Weight: 2.0 pts
+        const viralColorRatio = (cyanPx + greenPx + yellowPx) / totalPx;
+        
+        if (viralColorRatio > 0.05) {
+            iScore += 2.0;
+            mLog += renderMetric("Viral Colors", 2.0, 2.0, "Cyan/Green/Yellow detected.");
+        } else {
+            mLog += renderMetric("Viral Colors", 0, 2.0, "Lacks viral colors.", true);
+            mSugg.push("PDF FINDING: Cyan & Green thumbnails get +36% views. Add these highlights.");
+        }
+
+        // G. FACES (PDF: +4% Lift) - Priority: LOW
+        // Weight: 0.5 pts
         if (facePresent) {
             iScore += 0.5;
             mLog += renderMetric("Face", 0.5, 0.5, "Included.");
         } else {
-            mLog += renderMetric("Face", 0, 0.5, "No face (Minor impact).");
-            // No suggestion needed, it's minor.
+            mLog += renderMetric("Face", 0, 0.5, "No face.");
+            // No suggestion, barely impacts score.
         }
 
         return { score: iScore, metrics: mLog, suggestions: mSugg };
@@ -401,15 +433,15 @@
         
         const suggUl = document.getElementById(`sugg_${id}`);
         suggUl.innerHTML = "";
-        if(suggestions.length === 0) suggUl.innerHTML = "<li>✅ Optimized!</li>";
+        if(suggestions.length === 0) suggUl.innerHTML = "<li>✅ Fully Optimized!</li>";
         else suggestions.forEach(s => suggUl.innerHTML += `<li>${s}</li>`);
 
         const verdictEl = document.getElementById(`verdict_${id}`);
         const cardEl = document.getElementById(`card_${id}`);
         let color = "#1c1e21"; let text = "Uncertain"; let border = "#ccc";
 
-        if (finalScore >= 8.5) { color = "#31a24c"; text = "🔥 Viral Science"; border = "#31a24c"; }
-        else if (finalScore >= 6.5) { color = "#b7791f"; text = "⚡ Solid Concept"; border = "#b7791f"; }
+        if (finalScore >= 8.5) { color = "#31a24c"; text = "🔥 Viral Probable"; border = "#31a24c"; }
+        else if (finalScore >= 6.0) { color = "#b7791f"; text = "⚡ Good Potential"; border = "#b7791f"; }
         else { color = "#e41e3f"; text = "📉 Low Potential"; border = "#e41e3f"; }
 
         document.getElementById(`score_val_${id}`).style.color = color;
