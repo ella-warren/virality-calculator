@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve Mould Virality Tool v4.0</title>
+    <title>Steve Mould Virality Tool v6.0 (Weighted)</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; color: #1c1e21; margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 40px; }
         .header h1 { margin: 0; color: #1877f2; }
-        .header p { color: #606770; max-width: 600px; margin: 10px auto; }
+        .header p { color: #606770; max-width: 700px; margin: 10px auto; font-size: 0.9rem; }
         
         .grid-container {
             display: grid;
@@ -75,8 +75,8 @@
 <body>
 
 <div class="header">
-    <h1>Virality A/B Tester v4.0</h1>
-    <p>Now featuring <strong>Context Awareness</strong> and Nuanced Scoring.</p>
+    <h1>Virality A/B Tester v6.0</h1>
+    <p>Weighted Analysis: <strong>Emotive (22% lift)</strong> > <strong>Color (36% lift)</strong> > <strong>Faces (4% lift)</strong></p>
 </div>
 
 <div class="grid-container">
@@ -87,13 +87,13 @@
                 <h2>Option ${String.fromCharCode(64+i)}</h2>
                 
                 <label>Video Title</label>
-                <input type="text" id="title_${i}" placeholder="Enter your title...">
+                <input type="text" id="title_${i}" placeholder="Why This Water Sounds Like Glass...">
                 
                 <label>Thumbnail Image</label>
                 <input type="file" id="file_${i}" accept="image/*" onchange="previewImage(this, 'prev_${i}')">
                 <img id="prev_${i}" class="preview-img" />
                 
-                <label>Thumbnail Text Content</label>
+                <label>Thumbnail Text</label>
                 <div class="thumb-text-group">
                     <div class="checkbox-row">
                         <input type="checkbox" id="noText_${i}" onchange="toggleTextInput(${i})">
@@ -113,7 +113,7 @@
                     </div>
                     <div class="metrics-list" id="metrics_${i}"></div>
                     <div class="suggestions-box">
-                        <h4>⚠️ Improvements:</h4>
+                        <h4>⚠️ Optimization Tips:</h4>
                         <ul id="sugg_${i}"></ul>
                     </div>
                 </div>
@@ -128,12 +128,27 @@
 </div>
 
 <script>
-    // --- CONFIGURATION ---
-    const NEGATIVE_WORDS = ['broken', 'wrong', 'danger', 'impossible', 'dead', 'bad', 'stop', 'warning', 'secret', 'hidden', 'trap', 'fail', 'fake', 'lie'];
-    const CURIOSITY_WORDS = ['why', 'what', 'how', '?', 'this'];
+    // --- SCIENCE / MOULD AUDIENCE CONFIGURATION ---
+    const SCIENCE_EMOTIVE = ['weird', 'impossible', 'counter-intuitive', 'mystery', 'hidden', 'secret', 'actually', 'finally', 'broken', 'wrong', 'danger', 'dead', 'warning', 'anomaly', 'paradox', 'stop', 'glass'];
+    const SCIENCE_TOPICS = ['physics', 'liquid', 'water', 'vacuum', 'sound', 'light', 'laser', 'effect', 'experiment', 'beads', 'chain', 'mold', 'siphon', 'plasma', 'magnet', 'lens'];
     const STOP_WORDS = ['the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'of', 'in', 'on', 'to', 'for', 'with', 'at', 'by', 'it', 'that', 'this'];
 
-    // --- UI LOGIC ---
+    // --- HELPER: RENDER METRIC ---
+    function renderMetric(name, score, max, context, isBad = false) {
+        let colorClass = "score-mid";
+        if (score >= max * 0.9) colorClass = "score-perfect";
+        if (score === 0 || isBad) colorClass = "score-bad";
+        
+        return `
+        <div class="metric-row">
+            <div>
+                <span class="metric-name">${name}</span>
+                <span class="metric-context">${context}</span>
+            </div>
+            <span class="metric-score ${colorClass}">${score.toFixed(1)}/${max}</span>
+        </div>`;
+    }
+
     function previewImage(input, imgId) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
@@ -159,23 +174,7 @@
         }
     }
 
-    // --- HELPER: RENDER METRIC ---
-    function renderMetric(name, score, max, context, isBad = false) {
-        let colorClass = "score-mid";
-        if (score === max) colorClass = "score-perfect";
-        if (score === 0 || isBad) colorClass = "score-bad";
-        
-        return `
-        <div class="metric-row">
-            <div>
-                <span class="metric-name">${name}</span>
-                <span class="metric-context">${context}</span>
-            </div>
-            <span class="metric-score ${colorClass}">${score}/${max}</span>
-        </div>`;
-    }
-
-    // --- ANALYSIS CONTROLLER ---
+    // --- MAIN CONTROLLER ---
     function runAnalysis() {
         for(let i=1; i<=3; i++) analyzePair(i);
     }
@@ -187,101 +186,118 @@
         const noText = document.getElementById(`noText_${id}`).checked;
         const thumbText = document.getElementById(`thumbText_${id}`).value;
         
-        // UI Refs
         const resultSection = document.getElementById(`res_${id}`);
-        
         if (!title && !fileInput.files.length) return; 
-        
         resultSection.style.display = 'block';
         
-        let totalPoints = 0;
+        let points = 0;
         let suggestions = [];
         let metricsHtml = '';
 
-        // --- 1. TITLE ANALYSIS ---
+        // ============================================
+        // 1. TITLE ANALYSIS (Max 4.0 Points)
+        // ============================================
+
+        // A. Negativity/Emotive (WEIGHT: 2.0 pts) -> 50% of Title Score
+        const lowerTitle = title.toLowerCase();
+        const hasTrigger = SCIENCE_EMOTIVE.some(w => lowerTitle.includes(w));
         
-        // Length (Max 3 pts)
+        if (hasTrigger) {
+            points += 2.0;
+            metricsHtml += renderMetric("Negativity/Hook", 2.0, 2.0, "High Impact (+22% Lift).");
+        } else {
+            metricsHtml += renderMetric("Negativity/Hook", 0, 2.0, "Missing emotional trigger.", true);
+            suggestions.push("Title lacks a 'Negative' or 'Emotive' hook (e.g., Broken, Impossible). This is a missed 22% lift.");
+        }
+
+        // B. Length (WEIGHT: 1.0 pts)
         if (title.length > 0 && title.length < 60) {
-            totalPoints += 3;
-            metricsHtml += renderMetric("Title Length", 3, 3, "Perfect length (<60 chars)");
-        } else if (title.length >= 60 && title.length <= 80) {
-            totalPoints += 2;
-            metricsHtml += renderMetric("Title Length", 2, 3, "Good, but shortening to <60 maximizes CTR.");
-            suggestions.push(`Cut ${title.length - 59} characters to hit the viral sweet spot.`);
+            points += 1.0;
+            metricsHtml += renderMetric("Title Length", 1.0, 1.0, "Perfect (<60 chars)");
+        } else if (title.length <= 80) {
+            points += 0.5;
+            metricsHtml += renderMetric("Title Length", 0.5, 1.0, "Good, but cut 5-10 chars.");
+            suggestions.push("Shorten title to <60 chars to minimize cognitive load.");
         } else {
-            metricsHtml += renderMetric("Title Length", 0, 3, `Too long (${title.length} chars). High cognitive load.`, true);
-            suggestions.push("Title is significantly too long. Rewrite to be punchy.");
+            metricsHtml += renderMetric("Title Length", 0, 1.0, "Too long.", true);
+            suggestions.push("Title is too long. Rewrite.");
         }
 
-        // Negativity (Max 2 pts)
-        if (NEGATIVE_WORDS.some(w => title.toLowerCase().includes(w))) {
-            totalPoints += 2;
-            metricsHtml += renderMetric("Negativity Bias", 2, 2, "Contains strong negative trigger word.");
+        // C. Curiosity/Topic (WEIGHT: 1.0 pts)
+        const hasTopic = SCIENCE_TOPICS.some(w => lowerTitle.includes(w));
+        const hasQ = title.includes("?") || lowerTitle.includes("why") || lowerTitle.includes("what");
+
+        if (hasTopic && hasQ) {
+            points += 1.0;
+            metricsHtml += renderMetric("Curiosity", 1.0, 1.0, "Strong topic + question.");
+        } else if (hasTopic || hasQ) {
+            points += 0.5;
+            metricsHtml += renderMetric("Curiosity", 0.5, 1.0, "Has topic OR question.");
+            suggestions.push("Combine a Science Topic (e.g., 'Vacuum') with a Curiosity Gap ('Why...').");
         } else {
-            metricsHtml += renderMetric("Negativity Bias", 0, 2, "No negative hook detected.");
-            suggestions.push("Add words like 'Broken', 'Wrong', or 'Danger' for ~22% lift.");
+            metricsHtml += renderMetric("Curiosity", 0, 1.0, "Weak science focus.", true);
         }
 
-        // --- 2. THUMBNAIL TEXT CONTEXT (Max 3 pts) ---
+        // ============================================
+        // 2. THUMBNAIL TEXT (Max 1.5 Points)
+        // ============================================
+        
         if (noText) {
-            metricsHtml += renderMetric("Text Context", 3, 3, "Visual-only strategy (Valid for Science).");
-            totalPoints += 3;
+            points += 1.5;
+            metricsHtml += renderMetric("Thumb Text", 1.5, 1.5, "Visual-only strategy.");
         } else {
-            const tWords = title.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => !STOP_WORDS.includes(w));
-            const thumbWords = thumbText.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => !STOP_WORDS.includes(w));
-            
-            // Check for new info
-            const newInfo = thumbWords.some(w => !tWords.includes(w));
-            const repetition = thumbWords.every(w => tWords.includes(w));
-
-            if (repetition && thumbWords.length > 0) {
-                metricsHtml += renderMetric("Text Context", 0, 3, "Redundant. Repeats title info.", true);
-                suggestions.push("Thumbnail text repeats the title. Change it to add NEW context (e.g. specific data).");
-            } else if (newInfo) {
-                totalPoints += 3;
-                metricsHtml += renderMetric("Text Context", 3, 3, "Excellent. Adds new context not in title.");
+            // Brevity (0.5)
+            const wordCount = thumbText.trim().split(/\s+/).length;
+            if (wordCount < 5) {
+                points += 0.5;
+                metricsHtml += renderMetric("Brevity", 0.5, 0.5, "Short (<5 words).");
             } else {
-                 // Fallback
-                 totalPoints += 1;
-                 metricsHtml += renderMetric("Text Context", 1, 3, "Low impact.");
+                metricsHtml += renderMetric("Brevity", 0, 0.5, "Too wordy.", true);
+                suggestions.push("Reduce thumbnail text to <5 words.");
             }
 
-            // Word Count Check
-            if (thumbText.trim().split(/\s+/).length < 5) {
-                // No extra points, just don't penalize
+            // Data/Context (1.0)
+            const hasData = /\d|[kmg]v|hz|mm|°|%|k\b/i.test(thumbText);
+            const tWords = lowerTitle.replace(/[^\w\s]/g, '').split(/\s+/).filter(w => !STOP_WORDS.includes(w));
+            const thumbWords = thumbText.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => !STOP_WORDS.includes(w));
+            const repetition = thumbWords.every(w => tWords.includes(w)) && thumbWords.length > 0;
+
+            if (repetition) {
+                // Penalty for repeating title
+                suggestions.push("Thumbnail text repeats the title. Add NEW info (e.g., '15,000K').");
+            } else if (hasData) {
+                points += 1.0;
+                metricsHtml += renderMetric("Context", 1.0, 1.0, "Excellent data specificity.");
             } else {
-                suggestions.push("Thumbnail text > 4 words. Reduce to lower cognitive load.");
+                points += 0.5;
+                metricsHtml += renderMetric("Context", 0.5, 1.0, "Adds context, but lacks data.");
+                suggestions.push("Include specific numbers/units in thumbnail for higher click-through.");
             }
         }
 
-        // --- 3. IMAGE ANALYSIS (Async) ---
+        // ============================================
+        // 3. VISUALS (Max 4.5 Points) - HEAVILY WEIGHTED
+        // ============================================
+
         if (fileInput.files && fileInput.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    const imgResults = processImageLogic(img, facePresent);
-                    // Combine scores
-                    // Title max = 5, Context max = 3. Image max = 6. Total = 14.
-                    // We scale to 10.
-                    let finalRaw = totalPoints + imgResults.score;
-                    let normalized = (finalRaw / 14) * 10;
-                    
-                    finalizeResult(id, normalized, metricsHtml + imgResults.metrics, suggestions.concat(imgResults.suggestions));
+                    const imgResults = processScienceImage(img, facePresent);
+                    let finalScore = points + imgResults.score;
+                    finalizeResult(id, finalScore, metricsHtml + imgResults.metrics, suggestions.concat(imgResults.suggestions));
                 }
                 img.src = e.target.result;
             }
             reader.readAsDataURL(fileInput.files[0]);
         } else {
-            suggestions.push("Upload a thumbnail to get the full score.");
-            // calc score without image
-            let normalized = (totalPoints / 8) * 10; // Approx scale
-            finalizeResult(id, normalized, metricsHtml, suggestions);
+            suggestions.push("Upload a thumbnail.");
+            finalizeResult(id, points, metricsHtml, suggestions);
         }
     }
 
-    function processImageLogic(img, facePresent) {
-        // Create canvas
+    function processScienceImage(img, facePresent) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = 100; 
@@ -289,17 +305,22 @@
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
         const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        
         let totalBrightness = 0;
+        let pixels = [];
         let cyanPx = 0, greenPx = 0, yellowPx = 0;
         
         for (let i = 0; i < data.length; i += 4) {
             let r = data[i], g = data[i+1], b = data[i+2];
-            totalBrightness += (0.299*r + 0.587*g + 0.114*b);
+            let lum = 0.299*r + 0.587*g + 0.114*b;
+            totalBrightness += lum;
+            pixels.push(lum);
             
+            // HSV Logic
             let max = Math.max(r, g, b), min = Math.min(r, g, b);
             let s = (max===0)?0:(max-min)/max;
             
-            if(s>0.2 && max>50) {
+            if(s>0.25 && max>60) {
                 let h = 0;
                 let d = max-min;
                 switch(max){
@@ -310,51 +331,57 @@
                 h/=6;
                 let hue = h*360;
                 
-                if(hue>160 && hue<200) cyanPx++;
-                else if(hue>80 && hue<160) greenPx++;
-                else if(hue>40 && hue<70) yellowPx++;
+                if(hue>170 && hue<200) cyanPx++;
+                else if(hue>80 && hue<140) greenPx++;
+                else if(hue>45 && hue<65) yellowPx++;
             }
         }
         
-        const avgBrightness = totalBrightness / (data.length / 4);
-        const totalPx = data.length / 4;
+        const avgBrightness = totalBrightness / pixels.length;
+        const totalPx = pixels.length;
+        
+        // Contrast
+        let sumDiffSq = 0;
+        for(let p of pixels) sumDiffSq += Math.pow(p - avgBrightness, 2);
+        const stdDev = Math.sqrt(sumDiffSq / pixels.length);
         
         let iScore = 0;
         let mLog = '';
         let mSugg = [];
 
-        // Brightness (Max 3 pts)
-        if (avgBrightness >= 100 && avgBrightness <= 115) {
-            iScore += 3;
-            mLog += renderMetric("Brightness", 3, 3, "Viral Peak (100-115)");
-        } else if (avgBrightness < 70) {
-            mLog += renderMetric("Brightness", 0, 3, `Too dark (${Math.round(avgBrightness)}).`, true);
-            mSugg.push(`Increase exposure. Target brightness is 105 (current: ${Math.round(avgBrightness)}).`);
+        // A. Color (WEIGHT: 2.0 pts) - Highest Visual Factor (36% Lift)
+        if ((cyanPx + greenPx + yellowPx) / totalPx > 0.05) {
+            iScore += 2.0;
+            mLog += renderMetric("Viral Color", 2.0, 2.0, "Viral Palette (Cyan/Green).");
         } else {
-             iScore += 1;
-             mLog += renderMetric("Brightness", 1, 3, `Okay (${Math.round(avgBrightness)}), but not optimal.`);
-             mSugg.push("Boost brightness slightly to reach the 100-110 viral zone.");
+            mLog += renderMetric("Viral Color", 0, 2.0, "Lacks Cyan/Green (+36% Lift).", true);
+            mSugg.push("MAJOR: Add Cyan or Neon Green elements. This is the highest-leverage visual change.");
         }
 
-        // Color (Max 2 pts)
-        if ((cyanPx+greenPx)/totalPx > 0.1) {
-             iScore += 2;
-             mLog += renderMetric("Color Pallete", 2, 2, "Uses Viral Colors (Cyan/Green).");
-        } else if (yellowPx/totalPx > 0.05) {
-             iScore += 1.5;
-             mLog += renderMetric("Color Pallete", 1.5, 2, "Uses Viral Color (Yellow).");
+        // B. Contrast/Brightness (WEIGHT: 2.0 pts)
+        if (stdDev > 40) {
+            iScore += 2.0;
+            mLog += renderMetric("Contrast", 2.0, 2.0, "High Contrast (Excellent).");
+        } else if (avgBrightness >= 100 && avgBrightness <= 120) {
+            iScore += 2.0;
+            mLog += renderMetric("Brightness", 2.0, 2.0, "Perfect Exposure.");
+        } else if (avgBrightness > 130) {
+            iScore += 1.0;
+            mLog += renderMetric("Brightness", 1.0, 2.0, "Overexposed.");
+            mSugg.push("Darken image slightly to improve contrast.");
         } else {
-            mLog += renderMetric("Color Pallete", 0, 2, "Neutral colors detected.");
-            mSugg.push("Consider increasing saturation of Cyan or Green.");
+            iScore += 0.5;
+            mLog += renderMetric("Visual Pop", 0.5, 2.0, "Flat/Dark.");
+            mSugg.push("Increase contrast or add a bright light source (spark/laser).");
         }
 
-        // Face (Max 1 pt)
+        // C. Face (WEIGHT: 0.5 pts) - Low Impact (4% Lift)
         if (facePresent) {
-            iScore += 1;
-            mLog += renderMetric("Face", 1, 1, "Face included.");
+            iScore += 0.5;
+            mLog += renderMetric("Face", 0.5, 0.5, "Included.");
         } else {
-            mLog += renderMetric("Face", 0, 1, "No face.");
-            mSugg.push("Adding Steve's face typically gives a 4% lift.");
+            mLog += renderMetric("Face", 0, 0.5, "No face (Minor impact).");
+            // No suggestion needed, it's minor.
         }
 
         return { score: iScore, metrics: mLog, suggestions: mSugg };
@@ -375,8 +402,8 @@
         const cardEl = document.getElementById(`card_${id}`);
         let color = "#1c1e21"; let text = "Uncertain"; let border = "#ccc";
 
-        if (finalScore >= 8.0) { color = "#31a24c"; text = "🔥 Viral Potential"; border = "#31a24c"; }
-        else if (finalScore >= 6.0) { color = "#b7791f"; text = "⚡ Good Potential"; border = "#b7791f"; }
+        if (finalScore >= 8.5) { color = "#31a24c"; text = "🔥 Viral Science"; border = "#31a24c"; }
+        else if (finalScore >= 6.5) { color = "#b7791f"; text = "⚡ Solid Concept"; border = "#b7791f"; }
         else { color = "#e41e3f"; text = "📉 Low Potential"; border = "#e41e3f"; }
 
         document.getElementById(`score_val_${id}`).style.color = color;
